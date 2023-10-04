@@ -61,6 +61,15 @@ AllegroNode::AllegroNode(const std::string nodeName, bool sim /* = false */)
   declare_parameter("hand_info/version", 4.0);
   version = get_parameter("hand_info/version").as_double();
 
+  for (int i=0; i < DOF_JOINTS; i++)
+  {
+    std::string param_name("position_offset/" + std::to_string(i));
+    declare_parameter(param_name, 0.0);
+    position_offset[i] = get_parameter(param_name).as_double();
+    RCLCPP_INFO(get_logger(), "%s = %f", param_name.c_str(), position_offset[i]);
+ 
+  }
+
   // Initialize CAN device
   canDevice = 0;
   if(!sim) {
@@ -84,6 +93,33 @@ AllegroNode::AllegroNode(const std::string nodeName, bool sim /* = false */)
   joint_state_pub = this->create_publisher<sensor_msgs::msg::JointState>(JOINT_STATE_TOPIC, 3);
   joint_cmd_sub = this->create_subscription<sensor_msgs::msg::JointState>(DESIRED_STATE_TOPIC, 1, // queue size
                                  std::bind(&AllegroNode::desiredStateCallback, this, std::placeholders::_1));
+
+  param_callback_handle = this->add_on_set_parameters_callback([&](const std::vector<rclcpp::Parameter> &parameters)
+  {
+    rcl_interfaces::msg::SetParametersResult result;
+    for(auto& param : parameters){
+      auto& pname = param.get_name();
+      if (pname.rfind("position_offset", 0)==0)
+      {
+          int index = std::stoi(pname.substr(pname.find('/')+1));
+          double val = param.get_value<double>();
+          if (-0.5 < val && val < 0.5) {
+            position_offset[index] = val;
+            RCLCPP_INFO(get_logger(), "parameter set %s[%d]=%f", param.get_name().c_str(), index, param.get_value<double>());
+          } else {
+            result.successful = false;
+            result.reason = "value out of range (-0.5, 0.5)";
+            return result;
+          }
+      }
+      else
+      {
+            RCLCPP_INFO(get_logger(), "ignoring dynamic setting of parameter %s", pname.c_str());
+      }
+    } //for-loop
+    result.successful = true;
+    return result;
+  });
 }
 
 AllegroNode::~AllegroNode() {
@@ -141,7 +177,10 @@ void AllegroNode::updateController() {
       }
 
       // update joint positions:
-      canDevice->getJointInfo(current_position);
+      double buffer[DOF_JOINTS];
+      canDevice->getJointInfo(buffer);
+      for(int i=0; i< DOF_JOINTS; i++)
+        current_position[i] = buffer[i] + position_offset[i];
 
       // low-pass filtering:
       for (int i = 0; i < DOF_JOINTS; i++) {

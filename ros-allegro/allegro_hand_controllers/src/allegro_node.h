@@ -54,6 +54,8 @@ class AllegroNode: public rclcpp::Node {
 
  protected:
 
+  double position_offset[DOF_JOINTS] = {0.0};
+
   double current_position[DOF_JOINTS] = {0.0};
   double previous_position[DOF_JOINTS] = {0.0};
 
@@ -71,7 +73,7 @@ class AllegroNode: public rclcpp::Node {
   // ROS stuff
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_cmd_sub;
-
+  OnSetParametersCallbackHandle::SharedPtr param_callback_handle;
   // Store the current and desired joint states.
   sensor_msgs::msg::JointState current_joint_state;
   sensor_msgs::msg::JointState desired_joint_state;
