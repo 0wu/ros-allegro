@@ -4,7 +4,7 @@ import math
 from allegro_hand_controllers.allegro_robot import AllegroRobot
 import threading
 
-TORQUE_SCALE = -0.2
+TORQUE_SCALE = -0.1
 
 rclpy.init()
 
