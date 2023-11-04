@@ -47,6 +47,7 @@
 #include <fcntl.h>
 #include <list>
 #include <string>
+#include <vector>
 #include "AllegroHandDef.h"
 
 namespace allegro
@@ -62,6 +63,8 @@ public:
 
     void setTorque(double *torque);         ///< set desired joint torque
     void getJointInfo(double *position);    ///< get current joint position
+    void requestTemperature();
+    void getTemperature(std::vector<unsigned char>&);
 
     bool emergencyStop() { return _emergency_stop; }        ///< whether emergency is activated
     double torqueConversion() { return _tau_cov_const; }    ///< get torque conversion constant
@@ -79,6 +82,8 @@ private:
     double _curr_torque[DOF_JOINTS];        ///< current joint torque (Nm)
     double _desired_position[DOF_JOINTS];   ///< desired joint position (radian)
     double _desired_torque[DOF_JOINTS];     ///< desired joint torque (Nm)
+
+    unsigned char _curr_temperature[DOF_JOINTS];
 
     double _hand_version;                   ///< hand version
     double _tau_cov_const;                  ///< constant to convert joint torque to pwm command

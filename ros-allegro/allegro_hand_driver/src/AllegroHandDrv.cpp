@@ -211,6 +211,27 @@ void AllegroHandDrv::getJointInfo(double *position)
     }
 }
 
+void AllegroHandDrv::requestTemperature()
+{
+    //default value of temperature
+    memset(_curr_temperature, 0, sizeof(_curr_temperature));
+    const int num_fingers = 4;
+    for(int i=0; i < num_fingers; i++)
+    {
+        //request temperature from each finger
+        request_temperature(_can_handle, i); 
+    }
+}
+
+
+void AllegroHandDrv::getTemperature(std::vector<unsigned char>& temperature)
+{
+    temperature.resize(DOF_JOINTS);
+    for (int i = 0; i < DOF_JOINTS; i++) {
+        temperature[i] = _curr_temperature[i];
+    }
+}
+
 void AllegroHandDrv::_readDevices()
 {
     int err;
@@ -358,7 +379,10 @@ void AllegroHandDrv::_parseMessage(int id, int len, unsigned char* data)
                             (int)(data[1] << 8 ) |
                             (int)(data[2] << 16) |
                             (int)(data[3] << 24);
-            printf(">CAN(%d): Temperature[%d]: %d (celsius)\n", _can_handle, sindex, celsius);
+            printf(">CAN(%d): Temperature finger[%d]: %x (celsius)\n", _can_handle, sindex, celsius);
+            //packet format http://wiki.wonikrobotics.com/AllegroHandWiki/index.php/CAN_Protocol_v4.0
+            for(int i=0; i< 4; i++)
+                _curr_temperature[sindex*4 + i] = data[i];
         }
             break;
         default:

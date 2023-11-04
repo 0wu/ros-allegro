@@ -16,6 +16,7 @@ using namespace allegro;
 // #include <ros/ros.h>
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "std_msgs/msg/u_int8_multi_array.hpp"
 
 
 
@@ -28,6 +29,7 @@ class AllegroHandDrv;
 const std::string JOINT_STATE_TOPIC = "allegroHand/joint_states";
 const std::string DESIRED_STATE_TOPIC = "allegroHand/joint_cmd";
 const std::string LIB_CMD_TOPIC = "allegroHand/lib_cmd";
+const std::string JOINT_TEMPERATURE_TOPIC = "allegroHand/joint_tempeartures";
 
 class AllegroNode: public rclcpp::Node {
  public:
@@ -68,15 +70,21 @@ class AllegroNode: public rclcpp::Node {
 
   double desired_torque[DOF_JOINTS] = {0.0};
 
+  int status_interval = 0;
+
   std::string whichHand;  // Right or left hand.
 
   // ROS stuff
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub;
+  rclcpp::Time t_last_pub;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_cmd_sub;
+  rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr joint_temperature_pub;
+  bool joint_temperature_pending;
   OnSetParametersCallbackHandle::SharedPtr param_callback_handle;
   // Store the current and desired joint states.
   sensor_msgs::msg::JointState current_joint_state;
   sensor_msgs::msg::JointState desired_joint_state;
+  std_msgs::msg::UInt8MultiArray current_joint_temperature;
 
   // ROS Time
   rclcpp::Time tstart;

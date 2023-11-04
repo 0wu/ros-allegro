@@ -6,6 +6,7 @@
 #include "allegro_node.h"
 #include "allegro_hand_driver/AllegroHandDrv.h"
 #include <unistd.h>
+#include <algorithm>
 
 std::string jointNames[DOF_JOINTS] =
         {
@@ -61,6 +62,9 @@ AllegroNode::AllegroNode(const std::string nodeName, bool sim /* = false */)
   declare_parameter("hand_info/version", 4.0);
   version = get_parameter("hand_info/version").as_double();
 
+  declare_parameter("status_interval", 333); //1Hz
+  status_interval = get_parameter("status_interval").as_int();
+
   for (int i=0; i < DOF_JOINTS; i++)
   {
     std::string param_name("position_offset/" + std::to_string(i));
@@ -91,6 +95,8 @@ AllegroNode::AllegroNode(const std::string nodeName, bool sim /* = false */)
   // Advertise current joint state publisher and subscribe to desired joint
   // states.
   joint_state_pub = this->create_publisher<sensor_msgs::msg::JointState>(JOINT_STATE_TOPIC, 3);
+  joint_temperature_pub = this->create_publisher<std_msgs::msg::UInt8MultiArray>(JOINT_TEMPERATURE_TOPIC, 1);
+  joint_temperature_pending=false;
   joint_cmd_sub = this->create_subscription<sensor_msgs::msg::JointState>(DESIRED_STATE_TOPIC, 1, // queue size
                                  std::bind(&AllegroNode::desiredStateCallback, this, std::placeholders::_1));
 
@@ -101,21 +107,38 @@ AllegroNode::AllegroNode(const std::string nodeName, bool sim /* = false */)
       auto& pname = param.get_name();
       if (pname.rfind("position_offset", 0)==0)
       {
-          int index = std::stoi(pname.substr(pname.find('/')+1));
-          double val = param.get_value<double>();
-          if (-0.5 < val && val < 0.5) {
-            position_offset[index] = val;
-            RCLCPP_INFO(get_logger(), "parameter set %s[%d]=%f", param.get_name().c_str(), index, param.get_value<double>());
-          } else {
-            result.successful = false;
-            result.reason = "value out of range (-0.5, 0.5)";
-            return result;
-          }
+        int index = std::stoi(pname.substr(pname.find('/')+1));
+        double val = param.get_value<double>();
+        if (-0.5 < val && val < 0.5) {
+          position_offset[index] = val;
+          RCLCPP_INFO(get_logger(), "parameter set %s[%d]=%f", param.get_name().c_str(), index, param.get_value<double>());
+        } else {
+          result.successful = false;
+          result.reason = "value out of range (-0.5, 0.5)";
+          return result;
+        }
+        continue;
       }
-      else
+
+      if (pname.compare("status_interval") == 0)
       {
-            RCLCPP_INFO(get_logger(), "ignoring dynamic setting of parameter %s", pname.c_str());
+        int val = param.get_value<int>();
+        if (val >= 0)
+        {
+          status_interval = val;
+          RCLCPP_INFO(get_logger(), "status_interval set %s=%d", param.get_name().c_str(), val);
+          continue;
+        }
+        else
+        {
+          result.successful = false;
+          result.reason = "value out of range (>0)";
+          return result;
+        }
       }
+
+
+      RCLCPP_INFO(get_logger(), "ignoring dynamic setting of parameter %s", pname.c_str());
     } //for-loop
     result.successful = true;
     return result;
@@ -154,7 +177,7 @@ void AllegroNode::updateController() {
   // When running gazebo, sometimes the loop gets called *too* often and dt will
   // be zero. Ensure nothing bad (like divide-by-zero) happens because of this.
   if(dt <= 0) {
-    RCLCPP_DEBUG_STREAM_THROTTLE(rclcpp::get_logger("allegro_node"), *get_clock(), 1, "AllegroNode::updateController dt is zero.");
+    RCLCPP_DEBUG_STREAM_THROTTLE(rclcpp::get_logger("allegro_node"), *get_clock(), 1000, "AllegroNode::updateController dt is zero.");
     return;
   }
 
@@ -204,6 +227,23 @@ void AllegroNode::updateController() {
 
       // reset joint position update flag:
       canDevice->resetJointInfoReady();
+
+      if (status_interval > 0 && !joint_temperature_pending && (frame % status_interval)==0)
+      {
+	
+        canDevice->requestTemperature();
+        joint_temperature_pending = true;
+      }
+
+      if (joint_temperature_pending){
+        canDevice->getTemperature(current_joint_temperature.data);
+        if (std::all_of(current_joint_temperature.data.begin(), current_joint_temperature.data.end(), [](unsigned char x){return x>0; }))
+        {
+          joint_temperature_pub->publish(current_joint_temperature);
+          joint_temperature_pending = false;
+        }
+      }
+
 
       // publish joint positions to ROS topic:
       publishData();
