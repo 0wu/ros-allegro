@@ -7,6 +7,8 @@ source:
     folder: ros-humble-allegro-hand-controllers/src/work
   - path: ../ros-allegro/allegro_hand_driver
     folder: ros-humble-allegro-hand-driver/src/work
+  - path: ../ros-allegro/bhand
+    folder: ros-humble-bhand/src/work
 
 build:
   number: 0
@@ -60,6 +62,7 @@ outputs:
         - ros-humble-rclpy
         - ros-humble-sensor-msgs
         - ros-humble-allegro-hand-driver
+        - ros-humble-bhand
         - ros-humble-rclcpp
         - ros-humble-rclpy
         - ros-humble-sensor-msgs
@@ -69,6 +72,7 @@ outputs:
         - ros-humble-rclpy
         - ros-humble-sensor-msgs
         - ros-humble-allegro-hand-driver
+        - ros-humble-bhand
         - ros-humble-rclcpp
         - ros-humble-rclpy
         - ros-humble-sensor-msgs
@@ -79,6 +83,51 @@ outputs:
       home: http://ros.org/wiki/AllegroHandStack
       license: BSD
       summary: ROS stack for SimLab's Allegro Hand.
+      maintainers: []
+    extra:
+      recipe-maintainers:
+        - robostack
+    build:
+      number: 0
+      script:
+        sel(unix): build_catkin.sh
+        sel(win): build_catkin.bat
+    requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - "{{ compiler('c') }}"
+        - sel(linux64): sysroot_linux-64 2.17
+        - ninja
+        - sel(unix): make
+        - sel(unix): coreutils
+        - cmake
+        - sel(build_platform != target_platform): python
+        - sel(build_platform != target_platform): cross-python_{{ target_platform }}
+        - sel(build_platform != target_platform): cython
+        - sel(build_platform != target_platform): numpy
+        - sel(build_platform != target_platform): pybind11
+      host:
+        - ros-humble-ament-cmake
+        - ros-humble-rclcpp
+        - ros-humble-std-msgs
+        - ros-humble-sensor-msgs
+        - ros-humble-rclcpp
+        - ros-humble-std-msgs
+        - ros-humble-sensor-msgs
+      run:
+        - ros-humble-rclcpp
+        - ros-humble-std-msgs
+        - ros-humble-sensor-msgs
+        - ros-humble-rclcpp
+        - ros-humble-std-msgs
+        - ros-humble-sensor-msgs
+  - package:
+      name: ros-humble-bhand
+      version: 0.0.0
+    about:
+      home: http://ros.org/wiki/AllegroHandStack
+      license: BSD
+      summary: BHand library for Allegro hand.
       maintainers: []
     extra:
       recipe-maintainers:
