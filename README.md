@@ -33,7 +33,7 @@ mamba install -c tingfan -c robostack-staging ros-humble-allegro-hand-controller
 ### Install this repository 
 
 ```
-git clone -b ros2_main https://github.com/0wu/ros-allegro.git
+git clone -b ros2-main https://github.com/0wu/ros-allegro.git
 colcon build
 source install/setup.bash
 ```
