@@ -189,6 +189,7 @@ class AllegroRobot(Node):
             rate = self.create_rate(1000)
             while not self._joint_state:
                 rate.sleep()
+            self.destroy_rate(rate)
 
         if self._joint_state:
             return (self._joint_state.position, self._joint_state.effort)
